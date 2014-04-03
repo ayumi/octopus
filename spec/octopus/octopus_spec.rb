@@ -48,6 +48,45 @@ describe Octopus, :shards => [] do
     end
   end
 
+  describe "#using_any_slave" do
+    after(:each) do
+      Octopus.instance_variable_set(:@config, nil)
+    end
+
+    it "cycles through slaves" do
+      Octopus.setup do |config|
+        config.shards = {
+          :first_shard => {
+            :adapter => "mysql2",
+            :database => "octopus_shard_1",
+            :username => "root",
+            :password => ""
+          },
+          :second_shard => {
+            :adapter => "mysql2",
+            :database => "octopus_shard_2",
+            :username => "root",
+            :password => ""
+          }
+        }
+      end
+      empty_block = lambda {}
+
+      Octopus.should_receive(:using).with("first_shard", &empty_block)
+      Octopus.using_any_slave(&empty_block)
+
+      Octopus.should_receive(:using).with("second_shard", &empty_block)
+      Octopus.using_any_slave(&empty_block)
+
+      Octopus.should_receive(:using).with("first_shard", &empty_block)
+      Octopus.using_any_slave(&empty_block)
+    end
+
+    it "uses master when no slaves are available" do
+      pending
+    end
+  end
+
   describe "#setup" do
     it "should have the default octopus environment as production" do
       Octopus.environments.should == ["production"]

@@ -81,6 +81,23 @@ module Octopus
     ActiveRecord::Base.connection.initialize_shards(@config)
   end
 
+  def self.shards
+    @shards ||= ActiveRecord::Base.connection.instance_variable_get(:@shards).keys.reject { |shard| shard == 'master' }
+  end
+
+  def self.choose_next_shard!
+    if self.shards.any?
+      if @shard_index
+        @shard_index = (@shard_index + 1) % self.shards.length
+      else
+        @shard_index = 0
+      end
+      self.shards[@shard_index]
+    else
+      'master'
+    end
+  end
+
   def self.using(shard, &block)
     conn = ActiveRecord::Base.connection
 
@@ -89,6 +106,11 @@ module Octopus
     else
       yield
     end
+  end
+
+  def self.using_any_slave(&block)
+    shard = self.choose_next_shard!
+    self.using(shard, &block)
   end
 end
 
