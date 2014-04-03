@@ -49,11 +49,7 @@ describe Octopus, :shards => [] do
   end
 
   describe "#using_any_shard" do
-    after(:each) do
-      Octopus.instance_variable_set(:@config, nil)
-    end
-
-    it "cycles through shards" do
+    before(:each) do
       Octopus.setup do |config|
         config.shards = {
           :first_shard => {
@@ -70,20 +66,38 @@ describe Octopus, :shards => [] do
           }
         }
       end
-      empty_block = lambda {}
+      @empty_block = lambda {}
+    end
 
-      Octopus.should_receive(:using).with("first_shard", &empty_block)
-      Octopus.using_any_shard(&empty_block)
+    after(:each) do
+      Octopus.instance_variable_set(:@config, nil)
+      Octopus.instance_variable_set(:@shard_index, nil)
+    end
 
-      Octopus.should_receive(:using).with("second_shard", &empty_block)
-      Octopus.using_any_shard(&empty_block)
+    it "cycles through shards" do
+      Octopus.should_receive(:using).with("first_shard", &@empty_block)
+      Octopus.using_any_shard(&@empty_block)
 
-      Octopus.should_receive(:using).with("first_shard", &empty_block)
-      Octopus.using_any_shard(&empty_block)
+      Octopus.should_receive(:using).with("second_shard", &@empty_block)
+      Octopus.using_any_shard(&@empty_block)
+
+      Octopus.should_receive(:using).with("first_shard", &@empty_block)
+      Octopus.using_any_shard(&@empty_block)
+    end
+
+    it "lets you include master in the cycle" do
+      Octopus.should_receive(:using).with("first_shard", &@empty_block)
+      Octopus.using_any_shard(:include_master => true, &@empty_block)
+
+      Octopus.should_receive(:using).with("second_shard", &@empty_block)
+      Octopus.using_any_shard(:include_master => true, &@empty_block)
+
+      Octopus.should_receive(:using).with("master", &@empty_block)
+      Octopus.using_any_shard(:include_master => true, &@empty_block)
     end
 
     it "uses master when no slaves are available" do
-      pending
+      pending "how to reset config to no shards?"
     end
   end
 

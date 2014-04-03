@@ -82,23 +82,28 @@ module Octopus
   end
 
   def self.shards
-    @shards ||= ActiveRecord::Base.connection.instance_variable_get(:@shards).keys.reject { |shard| shard == 'master' }
+    @shards ||= ActiveRecord::Base.connection.instance_variable_get(:@shards).keys
   end
 
   def self.choose_next_shard!(opts = {})
-    opts.reverse_merge!(:start_with_random_shard => false)
+    opts.reverse_merge!(:start_with_random_shard => false, :include_master => false)
 
-    if self.shards.any?
+    if opts[:include_master]
+      shards = self.shards
+    else
+      shards = self.shards.reject { |shard| shard == 'master' }
+    end
+    if shards.any?
       if @shard_index
-        @shard_index = (@shard_index + 1) % self.shards.length
+        @shard_index = (@shard_index + 1) % shards.length
       else
         if opts[:start_with_random_shard]
-          @shard_index = rand( 0..(self.shards.length - 1) )
+          @shard_index = rand( 0..(shards.length - 1) )
         else
           @shard_index = 0
         end
       end
-      self.shards[@shard_index]
+      shards[@shard_index]
     else
       'master'
     end
